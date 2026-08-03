@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1039656103958",
+    "project_id": "cs-86-sdgp",
+    "storage_bucket": "cs-86-sdgp.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1039656103958:android:318b6b520ac45ab5e5c537",
+        "android_client_info": {
+          "package_name": "com.warriors.agroscan"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCN1CGVoTx5RPHjrVYxfVRVldMkVRhG6hc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
