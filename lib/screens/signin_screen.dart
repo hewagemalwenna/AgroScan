@@ -1,13 +1,13 @@
-import "package:firebase_auth/firebase_auth.dart";
-import "package:flutter/foundation.dart";
-import "package:flutter/material.dart";
-import "package:agroscan/tools/auth_service.dart";
-import "package:agroscan/widgets/navbar.dart";
-import "package:agroscan/widgets/widgets.dart";
-import "package:agroscan/screens/signup_screen.dart";
-import "package:agroscan/tools/colors.dart";
-
-import "../tools/square_tile.dart";
+import 'package:agroscan/screens/signup_screen.dart';
+import 'package:agroscan/tools/app_theme.dart';
+import 'package:agroscan/tools/auth_service.dart';
+import 'package:agroscan/tools/square_tile.dart';
+import 'package:agroscan/widgets/agro_ui.dart';
+import 'package:agroscan/widgets/navbar.dart';
+import 'package:agroscan/widgets/widgets.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -17,170 +17,131 @@ class SignInScreen extends StatefulWidget {
 }
 
 class _SignInScreenState extends State<SignInScreen> {
-  final TextEditingController _passwordTextController = TextEditingController();
-  final TextEditingController _emailTextController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  String? _passwordError;
 
-  String? _passwordTextError;
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _signIn() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    if (email.isEmpty || password.isEmpty) {
+      setState(() => _passwordError = 'Enter email and password');
+      return;
+    }
+
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const NavBarRoots()),
+      );
+    } on FirebaseAuthException catch (error) {
+      setState(() {
+        _passwordError = switch (error.code) {
+          'user-not-found' ||
+          'invalid-credential' ||
+          'wrong-password' ||
+          'INVALID_LOGIN_CREDENTIALS' =>
+            'Wrong email/password, or use Google Sign-In for Gmail accounts.',
+          'invalid-email' => 'Enter a valid email address',
+          'network-request-failed' => 'Network error. Check your connection.',
+          _ => 'Sign-in failed (${error.code})',
+        };
+      });
+    } catch (error) {
+      if (kDebugMode) print(error);
+      setState(() => _passwordError = 'Sign-in failed. Try again.');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        width: MediaQuery.of(context).size.width,
-        height: MediaQuery.of(context).size.height,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              hexStringToColor("03B321"),
-              hexStringToColor("19ED3E"),
-              hexStringToColor("55F571")
+    return AgroAuthShell(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ReusableTextField(
+            text: 'Email address',
+            icon: Icons.mail_outline_rounded,
+            isPasswordType: false,
+            controller: _emailController,
+          ),
+          const SizedBox(height: 16),
+          ReusableTextField(
+            text: 'Password',
+            icon: Icons.lock_outline_rounded,
+            isPasswordType: true,
+            controller: _passwordController,
+            errorText: _passwordError,
+          ),
+          const SizedBox(height: 24),
+          signInSignUpButton(context, true, _signIn),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              const Expanded(child: Divider()),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Text(
+                  'or continue with',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+              const Expanded(child: Divider()),
             ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
           ),
-        ),
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(
-              20,
-              MediaQuery.of(context).size.height * 0.175,
-              20,
-              0,
-            ),
-            child: Column(
-              children: <Widget>[
-                const Center(
-                  child: CircleAvatar(
-                    backgroundImage: AssetImage("assets/images/profileImage.jpg"),
-                    radius: 90.0,
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              SquareTile(
+                onTap: () => Authentication().signInWithGoogle(context),
+                imagePath: 'assets/images/google.png',
+                label: 'Google',
+              ),
+              const SizedBox(width: 12),
+              SquareTile(
+                onTap: () {},
+                imagePath: 'assets/images/apple.png',
+                label: 'Apple',
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'New to AgroScan? ',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              GestureDetector(
+                onTap: () => Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SignUpScreen()),
+                ),
+                child: const Text(
+                  'Create Account',
+                  style: TextStyle(
+                    color: AgroScanTheme.primary,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(
-                  height: 40,
-                ),
-                ReusableTextField(
-                  text: "Username",
-                  icon: Icons.person_outline,
-                  isPasswordType: false,
-                  controller: _emailTextController,
-                ),
-                const SizedBox(
-                  height: 20,
-                ),
-                ReusableTextField(
-                  text: "Password",
-                  icon: Icons.lock_outline,
-                  isPasswordType: true,
-                  controller: _passwordTextController,
-                  errorText: _passwordTextError,
-                ),
-                const SizedBox(
-                  height: 20,
-                ),
-                signInSignUpButton(context, true, () {
-                  FirebaseAuth.instance
-                      .signInWithEmailAndPassword(
-                    email: _emailTextController.text,
-                    password: _passwordTextController.text,
-                  )
-                      .then((value) {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const NavBarRoots(),
-                      ),
-                    );
-                  }).onError((error, stackTrace) {
-                    setState(() {
-                      _passwordTextError = "Incorrect password";
-                    });
-                    if (kDebugMode) {
-                      print("Error ${error.toString()}");
-                    }
-                  });
-                }),
-                const SizedBox(height: 20),
-                // Or continue with
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 25.0),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Divider(
-                          thickness: 0.5,
-                          color: Colors.grey[400],
-                        ),
-                      ),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 10.0),
-                        child: Text(
-                          'Continue with',
-                          style: TextStyle(color: Colors.black87),
-                        ),
-                      ),
-                      Expanded(
-                        child: Divider(
-                          thickness: 0.5,
-                          color: Colors.grey[400],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-                // Google and Apple sign in buttons
-                Row(
-                  mainAxisAlignment: MainAxisAlignment
-                      .spaceEvenly, // Aligns the buttons in the center with some space between them
-                  children: [
-                    // Google button
-                    SquareTile(
-                        onTap: () => Authentication().signInWithGoogle(context),
-                        imagePath: 'assets/images/google.png'),
-                    // Apple button
-                    SquareTile(
-                        onTap: () {}, imagePath: 'assets/images/apple.png'),
-                  ],
-                ),
-                const SizedBox(
-                  height: 20,
-                ),
-                signUpOption(),
-                const SizedBox(height: 40),
-              ],
-            ),
+              ),
+            ],
           ),
-        ),
+        ],
       ),
     );
   }
-
-  // method to show the signup button to navigate to signup screen
-  Row signUpOption() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const Text(
-          "Or Create An Account : ",
-          style: TextStyle(color: Colors.black87),
-        ),
-        GestureDetector(
-          onTap: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const SignUpScreen()),
-            );
-          },
-          child: const Text(
-            "Sign Up",
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
-        ),
-      ],
-    );
-  }
-}
-Future<String>getUserId()async{
-  User user=FirebaseAuth.instance.currentUser!;
-  return user.uid;
 }
