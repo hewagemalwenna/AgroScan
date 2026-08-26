@@ -1,220 +1,199 @@
-import 'package:agroscan/widgets/navbar.dart';
+import 'package:agroscan/tools/app_theme.dart';
+import 'package:agroscan/widgets/agro_ui.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SoilConditionPage extends StatefulWidget {
-  const SoilConditionPage({super.key});
+  const SoilConditionPage({super.key, this.initialPlantName});
+
+  final String? initialPlantName;
 
   @override
-  SoilConditionPageState createState() => SoilConditionPageState();
+  State<SoilConditionPage> createState() => SoilConditionPageState();
 }
 
 class SoilConditionPageState extends State<SoilConditionPage> {
+  late final TextEditingController _plantNameController;
+  late String _query;
 
-  TextEditingController plantNameController = TextEditingController(); // Create a TextEditingController
-  String userInput = '';
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.initialPlantName?.trim() ?? '';
+    _plantNameController = TextEditingController(text: initial);
+    _query = initial;
+  }
+
+  @override
+  void dispose() {
+    _plantNameController.dispose();
+    super.dispose();
+  }
+
+  void _search() {
+    setState(() => _query = _plantNameController.text.trim());
+  }
 
   @override
   Widget build(BuildContext context) {
-
-
-
     return Scaffold(
-      body: Stack(
-        children: [
-          Container(
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage("assets/images/soilimage.jpg"),
-                fit: BoxFit.cover,
-              ),
+      backgroundColor: AgroScanTheme.background,
+      appBar: AppBar(
+        title: const Text('Soil Guidance'),
+        backgroundColor: AgroScanTheme.primary,
+        foregroundColor: Colors.white,
+        elevation: 0,
+      ),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+          children: [
+            Text(
+              'Look up growing conditions for a crop or plant type.',
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
-            child: Center(
-              child: Container(
-                width: 300,
-                height: 600,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.8),
-                  borderRadius: BorderRadius.circular(20),
-                ),
+            const SizedBox(height: 20),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text(
-                      'Soil Condition:',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black, // Changed color to black
-                      ),
+                    AgroFormField(
+                      label: 'Plant name',
+                      hint: 'e.g. Potato, Tomato',
+                      icon: Icons.grass_outlined,
+                      controller: _plantNameController,
+                      onSubmitted: (_) => _search(),
                     ),
-                    const SizedBox(height: 5),
-                    // Text field for entering plant name
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: TextField(
-                        controller: plantNameController, // Assign the TextEditingController
-                        style: const TextStyle(color: Colors.black), // Changed text color to black
-                        decoration: InputDecoration(
-                            hintText: 'Enter Plant Name',
-                            hintStyle: const TextStyle(color: Colors.black), // Changed hint color to black
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            suffixIcon: IconButton(
-                              onPressed: (){
-                                plantNameController.clear();
-                              },
-                              icon: const Icon(Icons.clear),
-                            )
-                        ),
-                      ),
-                    ),
-                    MaterialButton(
-                      onPressed: (){
-                        setState((){
-                          userInput = plantNameController.text;
-                        });
-                      },
-                      color: Colors.blue,
-                      child: const Text("Find", style: TextStyle(color: Colors.white),
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Expanded(
-                      child: userInput.isEmpty? Container()
-                          :FutureBuilder<List<String>>(
-                        future: fetchSoilConditionData(userInput), // Pass the text field value to the function
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState ==
-                              ConnectionState.waiting) {
-                            return const Center(
-                              child: CircularProgressIndicator(),
-                            );
-                          } else if (snapshot.hasData) {
-                            // Display fetched soil condition
-                            return Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const SizedBox(height: 10),
-                                const Text(
-                                  'Soil Condition Details:',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black, // Changed color to black
-                                  ),
-                                ),
-                                const SizedBox(height: 5),
-                                // Text field to display soil condition
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 20),
-                                  child: TextField(
-                                    readOnly: true,
-                                    controller: TextEditingController(
-                                        text: snapshot.data!.join('\n')),
-                                    maxLines: null,
-                                    style: const TextStyle(color: Colors.black), // Changed text color to black
-                                    decoration: InputDecoration(
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            );
-                          } else if (snapshot.hasError) {
-                            // Handle errors
-                            return const Center(
-                              child: Text('Plant not found',
-                                  style: TextStyle(color: Colors.black)), // Changed color to black
-                            );
-                          } else {
-                            // Handle no data case
-                            return const Center(
-                              child: Text('No data available',
-                                  style: TextStyle(color: Colors.black)), // Changed color to black
-                            );
-                          }
-                        },
-                      ),
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      onPressed: _search,
+                      icon: const Icon(Icons.search_rounded),
+                      label: const Text('Find Conditions'),
                     ),
                   ],
                 ),
               ),
             ),
-          ),
-          Positioned(
-            top: 40,
-            right: 20,
-            child: IconButton(
-              icon: const Icon(
-                Icons.settings,
-                color: Colors.white,
-              ),
-              onPressed: () {
-                // Add functionality for settings button
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const NavBarRoots()));
-              },
-            ),
-          ),
-          Positioned(
-            top: 40,
-            left: 20,
-            child: Container(
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
-              ),
-              padding: const EdgeInsets.all(8.0),
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.black),
-                onPressed: () {
-                  Navigator.pop(context);
-                  // Add functionality to close the page
+            const SizedBox(height: 20),
+            if (_query.isEmpty)
+              const AgroEmptyState(
+                icon: Icons.terrain_outlined,
+                title: 'Search for a Plant',
+                subtitle:
+                    'Enter a crop name to view soil and growing guidance from Firestore.',
+              )
+            else
+              FutureBuilder<String>(
+                future: fetchSoilConditionData(_query),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 32),
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: AgroScanTheme.primary,
+                        ),
+                      ),
+                    );
+                  }
+
+                  if (snapshot.hasError) {
+                    return AgroInfoBanner(
+                      icon: Icons.error_outline_rounded,
+                      text: 'No soil guidance found for "$_query". '
+                          'Check the plant name or add a document in Firestore.',
+                      color: const Color(0xFFB3261E),
+                    );
+                  }
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      AgroHeroChip(
+                        label: 'Plant',
+                        value: _titleCase(_query),
+                        icon: Icons.eco_outlined,
+                      ),
+                      const SizedBox(height: 16),
+                      AgroDetailCard(
+                        title: 'Soil Condition',
+                        body: snapshot.data!,
+                        icon: Icons.water_drop_outlined,
+                      ),
+                    ],
+                  );
                 },
               ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-Future<List<String>> fetchSoilConditionData(String plantName) async {
-  final CollectionReference plants =
-  FirebaseFirestore.instance.collection('Soil Condition');
+String? _readSoilConditionField(Map<String, dynamic> data) {
+  for (final key in [
+    'condition',
+    'Soil Condition',
+    'soilCondition',
+    'SoilCondition',
+  ]) {
+    final value = data[key];
+    if (value is String && value.trim().isNotEmpty) {
+      return value.trim();
+    }
+  }
+  return null;
+}
+
+String _titleCase(String value) {
+  return value
+      .split(RegExp(r'\s+'))
+      .where((part) => part.isNotEmpty)
+      .map((part) =>
+          '${part[0].toUpperCase()}${part.substring(1).toLowerCase()}')
+      .join(' ');
+}
+
+Future<DocumentSnapshot?> _findSoilConditionDoc(
+  CollectionReference plants,
+  String plantName,
+) async {
+  final trimmed = plantName.trim();
+  if (trimmed.isEmpty) return null;
+
+  final candidates = <String>{
+    trimmed,
+    trimmed.toLowerCase(),
+    trimmed.toUpperCase(),
+    _titleCase(trimmed),
+  };
+
+  for (final id in candidates) {
+    final snapshot = await plants.doc(id).get();
+    if (snapshot.exists) return snapshot;
+  }
+  return null;
+}
+
+Future<String> fetchSoilConditionData(String plantName) async {
+  final plants =
+      FirebaseFirestore.instance.collection('Soil Condition');
   try {
-    final docSnapshot = await plants.doc(plantName).get();
+    final docSnapshot = await _findSoilConditionDoc(plants, plantName);
+    if (docSnapshot == null) throw Exception('Plant not found');
 
-    if (docSnapshot.exists) {
-      final Map<String, dynamic>? data =
-      docSnapshot.data() as Map<String, dynamic>?;
-      final String? soilCondition =
-      data?['condition'] as String?; // Assuming field name is 'Soil Condition'
+    final data = docSnapshot.data() as Map<String, dynamic>?;
+    final soilCondition =
+        data == null ? null : _readSoilConditionField(data);
 
-      if (soilCondition != null) {
-        // Return soil condition if available
-        return [soilCondition];
-      } else {
-        // Return an empty list if soil condition is not available
-        throw Exception('Plant not found');
-      }
-    } else {
-      // Handle the case where the plant document is not found
-      throw Exception('Plant not found');
-    }
+    if (soilCondition == null) throw Exception('Plant not found');
+    return soilCondition;
   } catch (e) {
-    if (kDebugMode) {
-      print("Error fetching soil condition: $e");
-    }
-    throw Exception("Error fetching soil condition");
+    if (kDebugMode) print('Error fetching soil condition: $e');
+    throw Exception('Error fetching soil condition');
   }
 }

@@ -1,183 +1,209 @@
+import 'package:agroscan/screens/tfmodel.dart';
+import 'package:agroscan/tools/app_theme.dart';
+import 'package:agroscan/widgets/agro_ui.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:agroscan/screens/tfmodel.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
+class TreatmentAdvice {
+  const TreatmentAdvice({
+    required this.title,
+    required this.body,
+    required this.icon,
+  });
 
+  final String title;
+  final String body;
+  final IconData icon;
+}
 
 class TreatmentPage extends StatelessWidget {
-  final PredictionData predictionData;// created constructor with predictionData
+  const TreatmentPage({super.key, required this.predictionData});
 
-  const TreatmentPage({Key? key, required this.predictionData}) : super(key: key);
-
-
-
+  final PredictionData predictionData;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          Container(
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage(
-                    "assets/images/treatment.png"), // Your image path here
-                fit: BoxFit.cover,
-              ),
+      backgroundColor: AgroScanTheme.background,
+      appBar: AppBar(
+        title: const Text('Care Guidance'),
+        backgroundColor: AgroScanTheme.primary,
+        foregroundColor: Colors.white,
+        elevation: 0,
+      ),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+          children: [
+            AgroHeroChip(
+              label: 'Detected Condition',
+              value: predictionData.label,
+              icon: Icons.medical_information_outlined,
             ),
-            child: Center(
-              child: Container(
-                width: 300,
-                height: 400,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.8), // Opacity set to 70%
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+            const SizedBox(height: 24),
+            const AgroSectionTitle('Recommended Actions'),
+            const SizedBox(height: 12),
+            FutureBuilder<List<TreatmentAdvice>>(
+              future: fetchTreatmentData(predictionData.label),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 40),
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: AgroScanTheme.primary,
+                      ),
+                    ),
+                  );
+                }
+
+                if (snapshot.hasError) {
+                  final message = snapshot.error
+                          ?.toString()
+                          .replaceFirst('Exception: ', '') ??
+                      'Could not load treatment guidance';
+                  return AgroInfoBanner(
+                    icon: Icons.error_outline_rounded,
+                    text: message,
+                    color: const Color(0xFFB3261E),
+                  );
+                }
+
+                final treatments = snapshot.data ?? [];
+                if (treatments.isEmpty) {
+                  return const AgroEmptyState(
+                    icon: Icons.search_off_rounded,
+                    title: 'No guidance available',
+                    subtitle:
+                        'Add a Diseases document in Firestore or run Setup disease treatments in Settings.',
+                  );
+                }
+
+                return Column(
                   children: [
-                    const Text(
-                      'Treatment Diagnosis:',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-
+                    for (final item in treatments)
+                      AgroDetailCard(
+                        title: item.title,
+                        body: item.body,
+                        icon: item.icon,
                       ),
-
-                    ),
-                    const SizedBox(height: 20),
-                    Text( predictionData.label,//outputs the predicted label
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: Colors.black,
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-
-                    Expanded(
-                      child: FutureBuilder<List<String>>(
-                        future: fetchTreatmentData(predictionData.label),
-                        builder: (context, snapshot) {
-                          if (snapshot.hasData) {
-                            // Display fetched treatments
-                            return Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              //crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text("Treatment Methods",
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                                const SizedBox(height: 20,),
-                                for (final treatment in snapshot.data!)
-                                  Text(treatment,
-                                    style: const TextStyle(
-                                        color: Colors.black,
-                                        //fontWeight: FontWeight.bold,
-                                        fontSize: 15,
-                                        fontStyle: FontStyle.italic
-                                    ),
-                                  ),
-                              ],
-                            );
-                          } else if (snapshot.hasError) {
-                            // Handle errors
-                            return const Center(
-                              child: Text('Error fetching treatments'),
-                            );
-                          } else {
-                            // Show loading indicator
-                            return const Center(
-                              child: CircularProgressIndicator(),
-                            );
-                          }
-                        },
-                      ),
-                    ),
                   ],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            top: 40,
-            right: 20,
-            child: IconButton(
-              icon: const Icon(
-                Icons.settings,
-                color: Colors.black,
-              ),
-              onPressed: () {
-                // Add functionality for settings button
+                );
               },
             ),
-          ),
-          Positioned(
-            top: 40,
-            left: 20,
-            child: Container(
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
-              ),
-              padding: const EdgeInsets.all(8.0),
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.black),
-                onPressed: () {
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const TfModel()));
-                  // Add functionality to close the page
-                },
-              ),
+            const SizedBox(height: 20),
+            const AgroInfoBanner(
+              icon: Icons.info_outline_rounded,
+              text:
+                  'Follow product labels and local regulations. AgroScan guidance '
+                  'is advisory — confirm with an agricultural professional when unsure.',
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-Future<List<String>> fetchTreatmentData(String diseaseName) async {
-  final CollectionReference diseases = FirebaseFirestore.instance.collection('Diseases');
+String? _readStringField(Map<String, dynamic> data, List<String> keys) {
+  for (final key in keys) {
+    final value = data[key];
+    if (value is String && value.trim().isNotEmpty) {
+      return value.trim();
+    }
+  }
+  return null;
+}
+
+String _titleCase(String value) {
+  return value
+      .split(RegExp(r'\s+'))
+      .where((part) => part.isNotEmpty)
+      .map((part) =>
+          '${part[0].toUpperCase()}${part.substring(1).toLowerCase()}')
+      .join(' ');
+}
+
+Future<DocumentSnapshot?> _findDiseaseDoc(
+  CollectionReference diseases,
+  String diseaseName,
+) async {
+  final trimmed = diseaseName.trim();
+  if (trimmed.isEmpty) return null;
+
+  final candidates = <String>{
+    trimmed,
+    trimmed.toLowerCase(),
+    trimmed.toUpperCase(),
+    _titleCase(trimmed),
+  };
+
+  for (final id in candidates) {
+    final snapshot = await diseases.doc(id).get();
+    if (snapshot.exists) return snapshot;
+  }
+  return null;
+}
+
+Future<List<TreatmentAdvice>> fetchTreatmentData(String diseaseName) async {
+  final diseases = FirebaseFirestore.instance.collection('Diseases');
+  final label = diseaseName.trim();
+
   try {
-    final docSnapshot = await diseases.doc(diseaseName).get();
-
-    if (docSnapshot.exists) {
-      final Map<String, dynamic>? data = docSnapshot.data() as Map<
-          String,
-          dynamic>?;
-      final String? treatment1 = data?['Cultural Practices'] as String?;
-      final String? treatment2 = data?['Chemical Control'] as String?;
-
-
-      // Ensure a non-null list of treatments is returned
-      final treatments = [
-        if (treatment1 != null) treatment1,
-        if (treatment2 != null) treatment2,
-      ];
-
-      if (kDebugMode) {
-        print('Treatments: $treatments');
-      }
-
-      return treatments; // Always returning a list, even if empty
-
-    } else {
-      // Handle the case where the disease document is not found
+    final docSnapshot = await _findDiseaseDoc(diseases, label);
+    if (docSnapshot == null) {
       throw Exception(
-          'Disease not found '); // Or return a default list
+        'No Firestore document for "$label". '
+        'Use Settings → Setup disease treatments.',
+      );
     }
-  }catch (e){
-    if (kDebugMode) {
-      print("error fetching treatments: $e");
+
+    final data = docSnapshot.data() as Map<String, dynamic>?;
+    if (data == null) {
+      throw Exception('Diseases/$label exists but has no fields.');
     }
-    throw Exception("error fetching treatments");
+
+    final cultural = _readStringField(data, [
+      'Cultural Practices',
+      'cultural_practices',
+      'CulturalPractices',
+    ]);
+    final chemical = _readStringField(data, [
+      'Chemical Control',
+      'chemical_control',
+      'ChemicalControl',
+    ]);
+
+    final treatments = <TreatmentAdvice>[
+      if (cultural != null)
+        TreatmentAdvice(
+          title: 'Cultural Practices',
+          body: cultural,
+          icon: Icons.eco_outlined,
+        ),
+      if (chemical != null)
+        TreatmentAdvice(
+          title: 'Chemical Control',
+          body: chemical,
+          icon: Icons.science_outlined,
+        ),
+    ];
+
+    if (treatments.isEmpty) {
+      throw Exception(
+        'Diseases/$label is missing Cultural Practices and Chemical Control fields.',
+      );
+    }
+
+    if (kDebugMode) print('Treatments loaded for $label');
+    return treatments;
+  } on FirebaseException catch (e) {
+    if (kDebugMode) print('error fetching treatments: $e');
+    throw Exception('Firestore ${e.code}: ${e.message}');
+  } catch (e) {
+    if (kDebugMode) print('error fetching treatments: $e');
+    if (e is Exception) rethrow;
+    throw Exception('Error fetching treatments');
   }
 }
