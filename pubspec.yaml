@@ -40,7 +40,7 @@ dependencies:
   firebase_core : 2.25.3
   provider: ^6.1.2
   shared_preferences: ^2.2.2
-  tflite_v2: ^1.0.0
+  tflite_flutter: ^0.12.1
   image_picker: ^1.0.7
   image: ^4.1.7
   google_sign_in: ^6.2.1
@@ -88,8 +88,9 @@ flutter:
     - assets/images/plant-three.png
     - assets/images/google.png
     - assets/images/avatar.png
-    - assets/model4.tflite
-    - assets/labels2.txt
+    # Replace these two files together whenever the trained dataset/classes change.
+    - assets/plant_disease_model.tflite
+    - assets/plant_disease_labels.txt
     - assets/images/modelpic.jpg
     - assets/images/updatelogo.jpg
     - assets/images/updated2.jpg

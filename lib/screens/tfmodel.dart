@@ -1,10 +1,11 @@
-import "package:agroscan/screens/treatment_screen.dart";
-import "package:tflite_v2/tflite_v2.dart";
-import "package:image_picker/image_picker.dart";
-import "package:flutter/material.dart";
-import "dart:io";
+import 'dart:io';
 
-import "../widgets/navbar.dart";
+import 'package:agroscan/screens/treatment_screen.dart';
+import 'package:agroscan/tools/app_theme.dart';
+import 'package:agroscan/tools/plant_classifier_service.dart';
+import 'package:agroscan/widgets/agro_ui.dart';
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 class TfModel extends StatefulWidget {
   const TfModel({super.key});
@@ -14,274 +15,200 @@ class TfModel extends StatefulWidget {
 }
 
 class _TfModelState extends State<TfModel> {
+  final ImagePicker _picker = ImagePicker();
+  final PlantClassifierService _classifier = PlantClassifierService();
 
-  //initializing variables
-  late File _image;
-  late List<dynamic> _output = [];
-  bool _loading = true;
-  final picker = ImagePicker();
+  File? _image;
+  PlantPrediction? _prediction;
+  bool _isModelReady = false;
+  bool _isClassifying = false;
+  String? _errorMessage;
 
-  //initState method to load the model
   @override
-  void initState(){
+  void initState() {
     super.initState();
-    loadModel().then((value){
+    _loadModel();
+  }
+
+  Future<void> _loadModel() async {
+    try {
+      await _classifier.load();
+      if (!mounted) return;
+      setState(() => _isModelReady = true);
+    } catch (_) {
+      if (!mounted) return;
       setState(() {
-
+        _errorMessage =
+            'The plant scanner could not start. Please restart the app.';
       });
-
-    });
+    }
   }
 
-  //dispose method to close the model for inference and memory management
-  @override
-  void dispose(){
-    super.dispose();
-    Tflite.close();
+  Future<void> _pickAndClassify(ImageSource source) async {
+    if (!_isModelReady || _isClassifying) return;
 
-  }
-
-  //method to load the model
-  loadModel()async{
-    await Tflite.loadModel(model: "assets/model4.tflite", labels: "assets/labels2.txt");
-
-  }
-
-  //running inference on the image captured
-  classfyingImage(File image) async{
-    var output = await Tflite.runModelOnImage(path: image.path,
-      numResults: 46,
-      threshold: 0.5,
-      imageMean: 127.5,
-      imageStd:  127.5,
-
+    final selectedImage = await _picker.pickImage(
+      source: source,
+      imageQuality: 90,
+      maxWidth: 1600,
     );
+    if (selectedImage == null || !mounted) return;
+
+    final imageFile = File(selectedImage.path);
     setState(() {
-      _output = output!;
-      _loading = false;
+      _image = imageFile;
+      _prediction = null;
+      _errorMessage = null;
+      _isClassifying = true;
     });
+
+    try {
+      final prediction = await _classifier.classify(imageFile);
+      if (!mounted) return;
+      setState(() => _prediction = prediction);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage =
+            'This image could not be analysed. Try a clear, close photo of one leaf.';
+      });
+    } finally {
+      if (mounted) setState(() => _isClassifying = false);
+    }
   }
 
-  //getting the image from camera method
-  pickImageFromCamera()async{
-    var image = await picker.pickImage(source: ImageSource.camera);
-    if (image == null) return null;
-
-    setState(() {
-      _image=File(image.path);
-
-    });
-    classfyingImage(_image);
-  }
-
-  //getting the image from gallery method
-  pickImageFromGallery()async{
-    var image = await picker.pickImage(source: ImageSource.gallery);
-    if (image == null) return null;
-
-    setState(() {
-      _image = File(image.path);
-
-    });
-    classfyingImage(_image);
+  @override
+  void dispose() {
+    _classifier.close();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final prediction = _prediction;
+
     return Scaffold(
-      body: Stack(
-        children: [
-          Container(
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage("assets/images/TfModel_back_image.jpg"),//adding background image
-                fit: BoxFit.cover,
-              ),
+      appBar: AppBar(
+        title: const Text('Plant Health Scan'),
+        backgroundColor: AgroScanTheme.primary,
+        foregroundColor: Colors.white,
+        elevation: 0,
+      ),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(24),
+          children: [
+            Text(
+              'Identify a possible plant problem',
+              style: Theme.of(context).textTheme.headlineMedium,
             ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                const SizedBox(height:150),// to add more space to display the contents
-                const SizedBox(
-                  height: 40,
-                ),
-                Center(
-                  child: _loading?
-                  SizedBox(
-                    width: 280,
-                    child: Column(
-                      children: [
-                        Image.asset("assets/images/modelpic.jpg"),// added image before prediction
-                        const SizedBox(
-                          height: 50,
-                        )
-                      ],
-                    ),
-                  )
-                      :Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                        SizedBox(
-                          height: 250,
-                          child: Image.file(_image),// adding image which is scanned and chosen from gallery or camera
-                        ),
-                          const SizedBox(
-                        height: 20,
-                        ),
-                        //_output!=null
-                          _output.isNotEmpty && _output[0].containsKey("label")// checking if output from model is not empty
-                          ? Text("Predicted leaf type: ${_output[0]["label"]}",
-                        style: const TextStyle(
-                            color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold, fontStyle: FontStyle.italic),
-                        )
-                          :const Text("Plant leaf not recognized, try again",// displaying if model does not recognize an output
-                        style: TextStyle(color: Colors.black, fontSize: 15, fontWeight: FontWeight.bold, fontStyle: FontStyle.italic),
-                        ),
-
-                        const SizedBox(
-                        height: 30,
-                      )
-                        ],
+            const SizedBox(height: 8),
+            Text(
+              'Photograph one leaf in good natural light against a plain background.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 20),
+            _ScanPreview(
+              image: _image,
+              isLoading: _isClassifying,
+              prediction: prediction,
+            ),
+            if (_errorMessage != null) ...[
+              const SizedBox(height: 14),
+              AgroInfoBanner(
+                icon: Icons.error_outline_rounded,
+                text: _errorMessage!,
+                color: const Color(0xFFB3261E),
+              ),
+            ],
+            if (!_isModelReady && _errorMessage == null) ...[
+              const SizedBox(height: 14),
+              const _LoadingBanner(),
+            ],
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: _isModelReady && !_isClassifying
+                        ? () => _pickAndClassify(ImageSource.camera)
+                        : null,
+                    icon: const Icon(Icons.camera_alt_outlined),
+                    label: const Text('Take Photo'),
                   ),
-
                 ),
-
-                //// making the open camera button
-                SizedBox(
-                  width: MediaQuery.of(context).size.width,
-                  child: Column(
-                    children: [
-                      ElevatedButton(
-                        onPressed: pickImageFromCamera,
-                        child: Container(
-                          width: MediaQuery.of(context).size.width-150,
-                          alignment: Alignment.center,
-                          padding:
-                          const EdgeInsets.symmetric(horizontal: 24, vertical: 17),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(10),
-
-                          ),
-
-
-
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.camera_alt,
-                              ),
-                              SizedBox(width: 10),
-                              Text(
-                                "Open camera",
-                              ),
-                            ],
-                          ),
-
-                        ),
-                      ),
-                      const SizedBox(
-                        height: 30,
-                      ),
-
-                      //making the open gallery button
-                      ElevatedButton(
-                        onPressed: pickImageFromGallery,
-                        child: Container(
-                          width: MediaQuery.of(context).size.width-150,
-                          alignment: Alignment.center,
-                          padding:
-                          const EdgeInsets.symmetric(horizontal: 24, vertical: 17),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(10),
-
-                          ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                            Icon(
-                            Icons.photo_library,
-                          ),
-                            SizedBox(width: 10),
-
-                            Text(
-                            "Open gallery",
-                          ),
-                          ],
-
-                        ),
-
-                      ),
-                      ),
-                    ],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _isModelReady && !_isClassifying
+                        ? () => _pickAndClassify(ImageSource.gallery)
+                        : null,
+                    icon: const Icon(Icons.photo_library_outlined),
+                    label: const Text('Gallery'),
                   ),
-                )
-
+                ),
               ],
             ),
-          ),
-          Positioned(
-            top: 40,
-            right: 20,
-            child: IconButton(
-              icon: const Icon(
-                Icons.settings,
-                color: Colors.black,
-              ),
-              onPressed: () {
-                // Add functionality for settings button
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const NavBarRoots()));
-              },
-            ),
-          ),
-          Positioned(
-            top: 40,
-            left: 20,
-            child: Container(
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
-              ),
-              padding: const EdgeInsets.all(8.0),
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.black),
-                onPressed: () {
-                  // Add functionality to close the page
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const NavBarRoots()));
-                },
-              ),
-            ),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 80, // Adjusted bottom value to move the button up
-            child: Center(
-              child: Visibility(
-                visible: _output.isNotEmpty && _output[0].containsKey("label")
-              && !healthyLabels.contains(_output[0]["label"]),
-              child: ElevatedButton(
+            if (prediction != null && !prediction.isHealthy) ...[
+              const SizedBox(height: 14),
+              FilledButton.tonalIcon(
                 onPressed: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) =>
-                             TreatmentPage(predictionData: PredictionData(_output[0]["label"]))
-                    ), // Navigate to TreatmentPage
+                      builder: (_) => TreatmentPage(
+                        predictionData: PredictionData(prediction.label),
+                      ),
+                    ),
                   );
                 },
-                child: const Text('Show treatment to disease'),
+                icon: const Icon(Icons.medical_information_outlined),
+                label: const Text('View Care Guidance'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AgroScanTheme.accentSoft,
+                  foregroundColor: AgroScanTheme.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                ),
               ),
-              )
+            ],
+            const SizedBox(height: 18),
+            const AgroInfoBanner(
+              icon: Icons.info_outline_rounded,
+              text:
+                  'AgroScan provides guidance only. Confirm serious or uncertain '
+                  'plant problems with a qualified agricultural adviser.',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LoadingBanner extends StatelessWidget {
+  const _LoadingBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AgroScanTheme.accentSoft,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AgroScanTheme.border),
+      ),
+      child: const Row(
+        children: [
+          SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Preparing the plant scanner…',
+              style: TextStyle(color: AgroScanTheme.primary),
             ),
           ),
         ],
@@ -290,14 +217,155 @@ class _TfModelState extends State<TfModel> {
   }
 }
 
-//created a class to get the label prediction
-class PredictionData{
-  late final String label;
+class _ScanPreview extends StatelessWidget {
+  const _ScanPreview({
+    required this.image,
+    required this.isLoading,
+    required this.prediction,
+  });
 
-  PredictionData(this.label);
+  final File? image;
+  final bool isLoading;
+  final PlantPrediction? prediction;
+
+  @override
+  Widget build(BuildContext context) {
+    final result = prediction;
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AspectRatio(
+            aspectRatio: 4 / 3,
+            child: image == null
+                ? const _EmptyPreview()
+                : Image.file(image!, fit: BoxFit.cover),
+          ),
+          if (isLoading)
+            const LinearProgressIndicator(color: AgroScanTheme.primary),
+          if (result != null)
+            Padding(
+              padding: const EdgeInsets.all(18),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: result.isHealthy
+                          ? AgroScanTheme.accentSoft
+                          : const Color(0xFFFFE9D5),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(
+                      result.isHealthy
+                          ? Icons.eco_outlined
+                          : Icons.warning_amber_rounded,
+                      color: result.isHealthy
+                          ? AgroScanTheme.primary
+                          : const Color(0xFF8B4A00),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          result.isHealthy
+                              ? 'Healthy result'
+                              : 'Possible issue',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          result.label,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: AgroScanTheme.text,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AgroScanTheme.accentSoft,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '${(result.confidence * 100).toStringAsFixed(1)}% confidence',
+                            style: const TextStyle(
+                              color: AgroScanTheme.primary,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }
 
-//list of healthy types of plants and gets stored in healthyLables array
-List<String> healthyLabels = ["Apple healthy","Blueberry healthy","Cherry(including_sour)healthy","Cinnamon healthy","Corn (maize)healthy","Grape healthy"
-"Peach healthy","Pepper bell healthy","Potato healthy","Raspberry healthy","Soybean healthy",
-"Strawberry healthy","Tea healthy","Tomato healthy",];
+class _EmptyPreview extends StatelessWidget {
+  const _EmptyPreview();
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: AgroScanTheme.accentSoft,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              color: AgroScanTheme.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AgroScanTheme.border),
+            ),
+            child: const Icon(
+              Icons.document_scanner_outlined,
+              size: 36,
+              color: AgroScanTheme.primary,
+            ),
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'No leaf image selected',
+            style: TextStyle(
+              color: AgroScanTheme.text,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Use camera or gallery to begin',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 13),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class PredictionData {
+  PredictionData(this.label);
+
+  final String label;
+}
