@@ -25,8 +25,9 @@ class WelcomeScreen extends StatelessWidget {
         width: MediaQuery.of(context).size.width,
         height: MediaQuery.of(context).size.height,
         padding: const EdgeInsets.all(10),
-        child: Column(
-          children: [
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
             const SizedBox(
               height: 15,
             ),
@@ -107,6 +108,7 @@ class WelcomeScreen extends StatelessWidget {
               ],
             )
           ],
+        ),
         ),
       ),
     );

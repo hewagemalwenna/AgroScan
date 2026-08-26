@@ -1,6 +1,7 @@
-import 'package:agroscan/widgets/edit_item.dart';
+import 'package:agroscan/tools/app_theme.dart';
+import 'package:agroscan/widgets/agro_ui.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../widgets/navbar.dart';
 
 class EditAccountScreen extends StatefulWidget {
   const EditAccountScreen({super.key});
@@ -10,135 +11,185 @@ class EditAccountScreen extends StatefulWidget {
 }
 
 class _EditAccountScreenState extends State<EditAccountScreen> {
-  String gender = "man";
+  late final TextEditingController _nameController;
+  late final TextEditingController _emailController;
+  String _gender = 'man';
+
+  @override
+  void initState() {
+    super.initState();
+    final user = FirebaseAuth.instance.currentUser;
+    _nameController = TextEditingController(text: user?.displayName ?? '');
+    _emailController = TextEditingController(text: user?.email ?? '');
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final email = _emailController.text;
+    final initial = email.isNotEmpty ? email.characters.first.toUpperCase() : 'A';
+
     return Scaffold(
+      backgroundColor: AgroScanTheme.background,
       appBar: AppBar(
-        leading: IconButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
-          icon: const Icon(Icons.arrow_back),
-        ),
-        leadingWidth: 80,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 10),
-            child: IconButton(
-              onPressed: () {},
-              style: IconButton.styleFrom(
-                backgroundColor: Colors.greenAccent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                fixedSize: const Size(60, 50),
-                elevation: 3,
-              ),
-              icon: const Icon(Icons.check, color: Colors.white),
-            ),
-          ),
-        ],
+        title: const Text('Profile'),
+        backgroundColor: AgroScanTheme.primary,
+        foregroundColor: Colors.white,
+        elevation: 0,
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(30),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                "Account",
-                style: TextStyle(
-                  fontSize: 36,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 40),
-              EditItem(
-                title: "Photo",
-                widget: Column(
-                  children: [
-                    Image.asset(
-                      "assets/images/avatar.png",
-                      height: 100,
-                      width: 100,
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+          children: [
+            Center(
+              child: Column(
+                children: [
+                  Container(
+                    width: 88,
+                    height: 88,
+                    decoration: BoxDecoration(
+                      gradient: AgroScanTheme.heroGradient,
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: AgroScanTheme.softShadow,
                     ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => const NavBarRoots()));
-                      },
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.lightBlueAccent,
+                    alignment: Alignment.center,
+                    child: Text(
+                      initial,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 32,
+                        fontWeight: FontWeight.w800,
                       ),
-                      child: const Text("Upload Image"),
-                    )
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    email.isNotEmpty ? email : 'AgroScan account',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 28),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    AgroFormField(
+                      label: 'Display name',
+                      controller: _nameController,
+                      icon: Icons.person_outline_rounded,
+                    ),
+                    const SizedBox(height: 16),
+                    AgroFormField(
+                      label: 'Email',
+                      controller: _emailController,
+                      icon: Icons.mail_outline_rounded,
+                      readOnly: true,
+                    ),
+                    const SizedBox(height: 20),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Gender',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AgroScanTheme.mutedText,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        _GenderChip(
+                          label: 'Male',
+                          icon: Icons.male_rounded,
+                          selected: _gender == 'man',
+                          onTap: () => setState(() => _gender = 'man'),
+                        ),
+                        const SizedBox(width: 10),
+                        _GenderChip(
+                          label: 'Female',
+                          icon: Icons.female_rounded,
+                          selected: _gender == 'woman',
+                          onTap: () => setState(() => _gender = 'woman'),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
-              const EditItem(
-                title: "Name",
-                widget: TextField(),
+            ),
+            const SizedBox(height: 20),
+            const AgroInfoBanner(
+              icon: Icons.info_outline_rounded,
+              text:
+                  'Profile editing is for display only in this version. Account '
+                  'credentials are managed through Firebase Authentication.',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GenderChip extends StatelessWidget {
+  const _GenderChip({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Material(
+        color: selected ? AgroScanTheme.primary : AgroScanTheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: selected ? AgroScanTheme.primary : AgroScanTheme.border,
               ),
-              const SizedBox(height: 40),
-              EditItem(
-                title: "Gender",
-                widget: Row(
-                  children: [
-                    IconButton(
-                      onPressed: () {
-                        setState(() {
-                          gender = "man";
-                        });
-                      },
-                      style: IconButton.styleFrom(
-                        backgroundColor: gender == "man"
-                            ? Colors.deepPurple
-                            : Colors.grey.shade200,
-                        fixedSize: const Size(50, 50),
-                      ),
-                      icon: Icon(
-                        Icons.male,
-                        color: gender == "man" ? Colors.white : Colors.black,
-                        size: 18,
-                      ),
-                    ),
-                    const SizedBox(width: 20),
-                    IconButton(
-                      onPressed: () {
-                        setState(() {
-                          gender = "woman";
-                        });
-                      },
-                      style: IconButton.styleFrom(
-                        backgroundColor: gender == "woman"
-                            ? Colors.deepPurple
-                            : Colors.grey.shade200,
-                        fixedSize: const Size(50, 50),
-                      ),
-                      icon: Icon(
-                        Icons.female,
-                        color: gender == "woman" ? Colors.white : Colors.black,
-                        size: 18,
-                      ),
-                    )
-                  ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  size: 18,
+                  color: selected ? Colors.white : AgroScanTheme.mutedText,
                 ),
-              ),
-              const SizedBox(height: 40),
-              const EditItem(
-                widget: TextField(),
-                title: "Age",
-              ),
-              const SizedBox(height: 40),
-              const EditItem(
-                widget: TextField(),
-                title: "Email",
-              ),
-            ],
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: selected ? Colors.white : AgroScanTheme.text,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
