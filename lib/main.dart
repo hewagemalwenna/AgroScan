@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:agroscan/tools/app_theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -10,19 +10,9 @@ import 'package:agroscan/widgets/provider.dart';
 //main
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  Platform.isAndroid
-      ? await Firebase.initializeApp(
-          options: const FirebaseOptions(
-          apiKey: "AIzaSyCN1CGVoTx5RPHjrVYxfVRVldMkVRhG6hc",
-          appId: "1:1039656103958:android:318b6b520ac45ab5e5c537",
-          messagingSenderId: "1039656103958",
-          projectId: "cs-86-sdgp",
-        ))
-      : await Firebase.initializeApp();
+  await Firebase.initializeApp();
   runApp(const MyApp());
 }
-
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -37,26 +27,57 @@ class MyApp extends StatelessWidget {
             routes: {
               'NavBarRoots': (context) => const NavBarRoots(),
             },
-          debugShowCheckedModeBanner: false,
-          themeMode: notifier.isDark ? ThemeMode.dark : ThemeMode.light,
-          darkTheme: notifier.isDark ? notifier.darkTheme : notifier.lightTheme,
-          home: FutureBuilder(
-            future: FirebaseAuth.instance.authStateChanges().first,
-            builder: (context,AsyncSnapshot<User?> snapshot){
-              if(snapshot.connectionState == ConnectionState.waiting){
-                return const Center(child: CircularProgressIndicator());
-
-              }else{
-                if (snapshot.hasData && snapshot.data!=null){
-                  return const NavBarRoots();
+            debugShowCheckedModeBanner: false,
+            theme: notifier.lightTheme,
+            themeMode: notifier.isDark ? ThemeMode.dark : ThemeMode.light,
+            darkTheme: notifier.darkTheme,
+            home: FutureBuilder(
+              future: FirebaseAuth.instance.authStateChanges().first,
+              builder: (context, AsyncSnapshot<User?> snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Scaffold(
+                    backgroundColor: AgroScanTheme.background,
+                    body: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 64,
+                            height: 64,
+                            decoration: BoxDecoration(
+                              gradient: AgroScanTheme.heroGradient,
+                              borderRadius: BorderRadius.circular(18),
+                              boxShadow: AgroScanTheme.softShadow,
+                            ),
+                            child: const Icon(Icons.eco_rounded,
+                                color: Colors.white, size: 34),
+                          ),
+                          const SizedBox(height: 20),
+                          const Text(
+                            'AgroScan',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w800,
+                              color: AgroScanTheme.text,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          const CircularProgressIndicator(
+                            color: AgroScanTheme.primary,
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                } else {
+                  if (snapshot.hasData && snapshot.data != null) {
+                    return const NavBarRoots();
+                  } else {
+                    return const OnboardingScreen();
+                  }
                 }
-                else{
-                  return const OnboardingScreen();
-                }
-              }
-            },
-          )
-        );
+              },
+            ));
       }),
     );
   }

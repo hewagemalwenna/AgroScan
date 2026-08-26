@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:shared_preferences/shared_preferences.dart";
+import "package:agroscan/tools/app_theme.dart";
 
 class UiProvider extends ChangeNotifier {
   bool _isDark = false;
@@ -7,16 +8,8 @@ class UiProvider extends ChangeNotifier {
 
   late SharedPreferences storage;
 
-  final darkTheme = ThemeData(
-    primaryColor: Colors.black12,
-    brightness: Brightness.dark,
-    primaryColorDark: Colors.black12,
-  );
-
-  final lightTheme = ThemeData(
-      primaryColor: Colors.white,
-      brightness: Brightness.light,
-      primaryColorDark: Colors.white);
+  final darkTheme = AgroScanTheme.dark();
+  final lightTheme = AgroScanTheme.light();
 
   changeTheme() {
     _isDark = !isDark;

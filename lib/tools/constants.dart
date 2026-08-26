@@ -1,16 +1,17 @@
-import 'package:flutter/material.dart';
+import 'package:agroscan/tools/app_theme.dart';
 
 class Constants {
-  //Primary color
-  static var primaryColor = const Color(0xff296e48);
-  static var blackColor = Colors.black54;
+  static const primaryColor = AgroScanTheme.primary;
 
-  //Onboarding texts
-  static var titleOne = "Learn about plant diseases";
-  static var descriptionOne = "Check how to care for plants from our app.";
-  static var titleTwo = "Store all your plant details";
-  static var descriptionTwo = "Save all your details, Check whenever you want.";
-  static var titleThree = "Find the best soil for your plants.";
-  static var descriptionThree =
-      "Find almost all types of soil conditions for your plants.";
+  static const titleOne = 'Scan Plant Leaves';
+  static const descriptionOne =
+      'Photograph a plant leaf and get an instant health assessment.';
+
+  static const titleTwo = 'Track Your Crop Care';
+  static const descriptionTwo =
+      'Log moisture, nutrients, and pesticide use so your field records stay organised in one place.';
+
+  static const titleThree = 'Get Actionable Guidance';
+  static const descriptionThree =
+      'Review treatment advice and soil guidance tailored to help you act quickly and responsibly.';
 }

@@ -1,54 +1,65 @@
 import 'package:agroscan/screens/home_screen.dart';
 import 'package:agroscan/screens/settings.dart';
+import 'package:agroscan/tools/app_theme.dart';
 import 'package:flutter/material.dart';
 
 class NavBarRoots extends StatefulWidget {
-  const NavBarRoots({super.key});
+  const NavBarRoots({super.key, this.initialIndex = 0});
+
+  final int initialIndex;
 
   @override
   State<NavBarRoots> createState() => _NavBarRootsState();
 }
 
 class _NavBarRootsState extends State<NavBarRoots> {
-  int _selectedIndex = 0;
-  final _screens = [
-    const HomeScreen(),
-    const SettingsScreen(),
-  ];
+  late int _selectedIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedIndex = widget.initialIndex;
+  }
+
+  static const _screens = [HomeScreen(), SettingsScreen()];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Background color for the scaffold
-      backgroundColor: Colors.white,
-      // Display the selected screen
-      body: _screens[_selectedIndex],
-      // Bottom navigation bar
-      bottomNavigationBar: BottomNavigationBar(
-        // Background color for the navigation bar
-        backgroundColor: const Color(0xFFE6E6FA),
-        // Fixed type to show all labels
-        type: BottomNavigationBarType.fixed,
-        // Color for selected item
-        selectedItemColor: Colors.black,
-        // Color for unselected items
-        unselectedItemColor: Colors.blueGrey,
-        // Style for selected label
-        selectedLabelStyle: const TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 15,
+      body: IndexedStack(index: _selectedIndex, children: _screens),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: AgroScanTheme.surface,
+          border: Border(top: BorderSide(color: AgroScanTheme.border)),
+          boxShadow: [
+            BoxShadow(
+              color: AgroScanTheme.cardShadow.withAlpha(60),
+              blurRadius: 16,
+              offset: const Offset(0, -4),
+            ),
+          ],
         ),
-        currentIndex: _selectedIndex, // Current selected index
-        onTap: (index) {
-          setState(() {
-            _selectedIndex = index; // Update selected index on tap
-          });
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: "Home"),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.settings), label: "Settings"),
-        ],
+        child: NavigationBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          height: 68,
+          selectedIndex: _selectedIndex,
+          onDestinationSelected: (index) {
+            setState(() => _selectedIndex = index);
+          },
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.home_outlined),
+              selectedIcon: Icon(Icons.home_rounded),
+              label: 'Home',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.settings_outlined),
+              selectedIcon: Icon(Icons.settings_rounded),
+              label: 'Settings',
+            ),
+          ],
+        ),
       ),
     );
   }
