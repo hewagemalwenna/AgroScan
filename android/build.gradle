@@ -21,7 +21,22 @@ allprojects {
 rootProject.buildDir = '../build'
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
+
+    // tflite_flutter compiles Java for 11. Match its Kotlin target without
+    // changing the main AgroScan application's Java 17 configuration.
+    if (project.name == "tflite_flutter") {
+        project.plugins.withId("com.android.library") {
+            project.tasks.withType(
+                    org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+            ).configureEach {
+                kotlinOptions {
+                    jvmTarget = "11"
+                }
+            }
+        }
+    }
 }
+
 subprojects {
     project.evaluationDependsOn(':app')
 }
