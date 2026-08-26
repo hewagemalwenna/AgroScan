@@ -4,7 +4,6 @@ import 'package:agroscan/screens/log_screen.dart';
 import 'package:agroscan/screens/onboarding_screen.dart';
 import 'package:agroscan/screens/profile_screen.dart';
 import 'package:agroscan/screens/responsible_advice_screen.dart';
-import 'package:agroscan/screens/settings.dart';
 import 'package:agroscan/screens/signin_screen.dart';
 import 'package:agroscan/screens/signup_screen.dart';
 import 'package:agroscan/screens/soilcondition_screen.dart';
@@ -56,7 +55,7 @@ class ScreenshotTourApp extends StatelessWidget {
 class _ShotHost extends StatelessWidget {
   const _ShotHost();
 
-  static const _loggedPlant = Plantdata(
+  static final _loggedPlant = Plantdata(
     plantType: 'Potato',
     moistureLevel: 40,
     nutrientLevel: 25,

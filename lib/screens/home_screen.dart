@@ -241,14 +241,12 @@ class _FeatureCard extends StatelessWidget {
     required this.title,
     required this.description,
     this.onTap,
-    this.badge,
   });
 
   final IconData icon;
   final String title;
   final String description;
   final VoidCallback? onTap;
-  final String? badge;
 
   @override
   Widget build(BuildContext context) {
@@ -286,26 +284,6 @@ class _FeatureCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 12),
-                if (badge != null) ...[
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: AgroScanTheme.accentSoft,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      badge!,
-                      style: const TextStyle(
-                        color: AgroScanTheme.primary,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.6,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                ],
                 Text(
                   title,
                   maxLines: 2,
