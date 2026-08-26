@@ -1,283 +1,337 @@
-import 'package:flutter/material.dart';
+import 'package:agroscan/screens/responsible_advice_screen.dart';
+import 'package:agroscan/screens/soilcondition_screen.dart';
 import 'package:agroscan/screens/storing_screen.dart';
 import 'package:agroscan/screens/tfmodel.dart';
-import 'package:agroscan/screens/soilcondition_screen.dart';
+import 'package:agroscan/screens/uk_crop_support_screen.dart';
+import 'package:agroscan/tools/app_theme.dart';
+import 'package:agroscan/widgets/agro_ui.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Getting the background color from the current theme
-    final Color backgroundColor = Theme.of(context).scaffoldBackgroundColor;
+    final user = FirebaseAuth.instance.currentUser;
+    final name = _displayName(user);
 
-    // Scaffold widget for the main UI structure
     return Scaffold(
-      // Setting the background color
-      backgroundColor: backgroundColor,
-      // Column widget to make the  children vertically
-      body: Column(
-        // Aligning children to the start of the cross axis (left)
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Welcome message and the image avatar
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 15, vertical: 75),
-            child: Row(
-              // Adding the space evenly between children
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "Welcome to AgroScan",
-                  style: TextStyle(
-                    fontSize: 25,
-                    fontWeight: FontWeight.w500,
+      body: SafeArea(
+        child: CustomScrollView(
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
+              sliver: SliverToBoxAdapter(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _greeting(),
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.headlineMedium,
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        gradient: AgroScanTheme.heroGradient,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: AgroScanTheme.softShadow,
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        name.characters.first.toUpperCase(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+              sliver: SliverToBoxAdapter(
+                child: _ScanHero(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const TfModel()),
                   ),
                 ),
-                CircleAvatar(
-                  radius: 25,
-                  backgroundImage: AssetImage("assets/images/profileImage.jpg"),
-                )
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              sliver: SliverToBoxAdapter(
+                child: AgroSectionTitle('Crop Care Tools'),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(24, 14, 24, 28),
+              sliver: SliverGrid.count(
+                crossAxisCount: 2,
+                mainAxisSpacing: 14,
+                crossAxisSpacing: 14,
+                childAspectRatio: 0.86,
+                children: [
+                  _FeatureCard(
+                    icon: Icons.note_add_outlined,
+                    title: 'Crop Records',
+                    description: 'Log pesticide use and crop-care activity.',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const StoringPage()),
+                    ),
+                  ),
+                  _FeatureCard(
+                    icon: Icons.grass_outlined,
+                    title: 'Soil Guidance',
+                    description: 'Review suitable growing conditions.',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const SoilConditionPage(),
+                      ),
+                    ),
+                  ),
+                  _FeatureCard(
+                    icon: Icons.location_on_outlined,
+                    title: 'UK Crop Support',
+                    description: 'UK potato guidance, detectable problems, and resources.',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const UkCropSupportScreen(),
+                      ),
+                    ),
+                  ),
+                  _FeatureCard(
+                    icon: Icons.verified_user_outlined,
+                    title: 'Responsible Advice',
+                    description: 'Model limits, scan tips, and when to seek help.',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ResponsibleAdviceScreen(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _displayName(User? user) {
+    final suppliedName = user?.displayName?.trim();
+    if (suppliedName != null && suppliedName.isNotEmpty) return suppliedName;
+    final email = user?.email;
+    if (email != null && email.contains('@')) return email.split('@').first;
+    return 'Grower';
+  }
+
+  String _greeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  }
+}
+
+class _ScanHero extends StatelessWidget {
+  const _ScanHero({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      borderRadius: BorderRadius.circular(28),
+      clipBehavior: Clip.antiAlias,
+      elevation: 0,
+      child: InkWell(
+        onTap: onTap,
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: AgroScanTheme.heroGradient,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: AgroScanTheme.softShadow,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Scan a Leaf in Seconds',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                    height: 1.15,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Photograph a leaf to check for possible disease.',
+                  style: TextStyle(
+                    color: Colors.white.withAlpha(210),
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.camera_alt_outlined,
+                          color: AgroScanTheme.primary, size: 20),
+                      SizedBox(width: 8),
+                      Text(
+                        'Start Scan',
+                        style: TextStyle(
+                          color: AgroScanTheme.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      SizedBox(width: 4),
+                      Icon(Icons.arrow_forward_rounded,
+                          color: AgroScanTheme.primary, size: 18),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
-          const SizedBox(height: 10),
-          // Row of clickable containers for different functionalities
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              // Containers for scanning plant function
-              InkWell(
-                onTap: () {
-                  Navigator.push(context,
-                      MaterialPageRoute(builder: (context) => const TfModel()));
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(30),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE6E6FA),
-                    borderRadius: BorderRadius.circular(10),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 6,
-                        spreadRadius: 4,
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.camera,
-                          color: Colors.green[800],
-                          size: 65,
-                        ),
-                      ),
-                      const SizedBox(height: 30),
-                      const Center(
-                        child: Text(
-                          "Scan Plant",
-                          style: TextStyle(
-                            fontSize: 20,
-                            color: Colors.black,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      const Text(
-                        "Check your Plant",
-                        style: TextStyle(
-                          color: Colors.blueGrey,
-                        ),
-                      )
-                    ],
-                  ),
-                ),
-              ),
-              // Containers for storing details function
-              InkWell(
-                onTap: () {
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => StoringPage()));
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(30),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE6E6FA),
-                    borderRadius: BorderRadius.circular(10),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 6,
-                        spreadRadius: 4,
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.add,
-                          color: Colors.green[800],
-                          size: 65,
-                        ),
-                      ),
-                      const SizedBox(height: 30),
-                      const Text(
-                        "Store",
-                        style: TextStyle(
-                          fontSize: 20,
-                          color: Colors.black,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      const Text(
-                        "Store your data ",
-                        style: TextStyle(
-                          color: Colors.blueGrey,
-                        ),
-                      )
-                    ],
-                  ),
-                ),
-              )
-            ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FeatureCard extends StatelessWidget {
+  const _FeatureCard({
+    required this.icon,
+    required this.title,
+    required this.description,
+    this.onTap,
+    this.badge,
+  });
+
+  final IconData icon;
+  final String title;
+  final String description;
+  final VoidCallback? onTap;
+  final String? badge;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AgroScanTheme.surface,
+      borderRadius: BorderRadius.circular(20),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AgroScanTheme.border),
           ),
-          const SizedBox(height: 30), // Adding spacing between the rows
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              // Containers for soil condition function
-              InkWell(
-                onTap: () {
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const SoilConditionPage()));
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(30),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE6E6FA),
-                    borderRadius: BorderRadius.circular(10),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 6,
-                        spreadRadius: 4,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: AgroScanTheme.accentSoft,
+                        borderRadius: BorderRadius.circular(13),
                       ),
-                    ],
+                      child: Icon(icon, color: AgroScanTheme.primary),
+                    ),
+                    if (onTap != null)
+                      const Icon(Icons.arrow_outward_rounded,
+                          size: 18, color: AgroScanTheme.mutedText),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (badge != null) ...[
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AgroScanTheme.accentSoft,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      badge!,
+                      style: const TextStyle(
+                        color: AgroScanTheme.primary,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.6,
+                      ),
+                    ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.touch_app,
-                          color: Colors.green[800],
-                          size: 65,
-                        ),
-                      ),
-                      const SizedBox(height: 30),
-                      const Text(
-                        "Best Soil      ",
-                        style: TextStyle(
-                          fontSize: 20,
-                          color: Colors.black,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      const Text(
-                        "The best soil   ",
-                        style: TextStyle(
-                          color: Colors.blueGrey,
-                        ),
-                      )
-                    ],
+                  const SizedBox(height: 6),
+                ],
+                Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AgroScanTheme.text,
                   ),
                 ),
-              ),
-              // Containers for heatmap function
-              InkWell(
-                onTap: () {},
-                child: Container(
-                  padding: const EdgeInsets.all(30),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE6E6FA),
-                    borderRadius: BorderRadius.circular(10),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 6,
-                        spreadRadius: 4,
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
+                const SizedBox(height: 5),
+                Expanded(
+                  child: Text(
+                    description,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontSize: 12,
+                          height: 1.35,
                         ),
-                        child: Icon(
-                          Icons.map,
-                          color: Colors.green[800],
-                          size: 65,
-                        ),
-                      ),
-                      const SizedBox(height: 30),
-                      const Text(
-                        "HeatMap",
-                        style: TextStyle(
-                          fontSize: 20,
-                          color: Colors.black,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      const Text(
-                        "Gather your data",
-                        style: TextStyle(
-                          color: Colors.blueGrey,
-                        ),
-                      )
-                    ],
                   ),
                 ),
-              )
-            ],
+              ],
+            ),
           ),
-          Expanded(
-            child:
-                Container(), // Added Expanded widget to occupy remaining space
-          ),
-        ],
+        ),
       ),
     );
   }
